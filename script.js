@@ -1,8 +1,43 @@
-// Get the HTML elements where recipe cards and pagination controls will be displayed
+// Get the HTML elements where recipe cards, search and pagination controls will be displayed
 const recipeContainer = document.getElementById("recipeContainer");
 const paginationContainer = document.getElementById("pagination");
+const searchForm = document.getElementById("searchForm");
+const searchInput = document.getElementById("searchInput");
+const searchMessage = document.getElementById("searchMessage");
 
 const RECIPES_PER_PAGE = 10; // Number of recipes per page
+
+// Debounce : It prevents a function from running too frequently (e.g., typing, scrolling). 
+// The function executes only after a delay from the last event. 
+function debounce(callback, delay) {
+    let timeoutId;
+    return (...args) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            callback(...args);
+        }, delay);
+    };
+}
+
+
+function performSearch(query) {
+    const searchParams = new URLSearchParams(window.location.search);
+    const currentQuery = searchParams.get("q")?.trim() ?? "";
+
+    // If the query hasn't changed, do nothing
+    if (currentQuery === query) {
+        return;
+    }
+    if (query) {
+        searchParams.set("q", query);
+    } else {
+        searchParams.delete("q");
+    }
+    // Only reset to page 1 because the query changed
+    searchParams.set("page", "1");
+
+    window.location.search = searchParams.toString();
+}
 
 /** 
  * Check whether the current page is recipes.html
@@ -32,17 +67,27 @@ function getCurrentPage() {
  * https://dummyjson.com/recipes?limit=3
  * https://dummyjson.com/recipes
  */
-function getRecipeUrl(limit, skip = 0) {
-    const baseUrl = "https://dummyjson.com/recipes";
-    return `${baseUrl}?limit=${limit}&skip=${skip}`;
+function getSearchQuery() {
+    return new URLSearchParams(window.location.search).get("q")?.trim() ?? ""; 
+}
+
+function getRecipeUrl(limit, skip = 0, query = "") {
+    const baseUrl = query ? "https://dummyjson.com/recipes/search" : "https://dummyjson.com/recipes";
+    const url = new URL(baseUrl);
+    url.searchParams.set("limit", limit);
+    url.searchParams.set("skip", skip);
+    if(query) {
+        url.searchParams.set("q", query);
+    }
+    return url.toString();
 }
 
 /** Fetch recipe data from the API and Returns an array of recipes. */
-async function fetchRecipes(page, limit) {
+async function fetchRecipes(page, limit, query = "") {
     // Calculate how many items to skip based on the current page
     const skip = Math.max(0, (page - 1) * limit);
     // Send request to API
-    const response = await fetch(getRecipeUrl(limit, skip));
+    const response = await fetch(getRecipeUrl(limit, skip, query));
     // Convert response into JavaScript object
     const data = await response.json();
 
@@ -58,11 +103,13 @@ async function fetchRecipes(page, limit) {
  * This function receives a recipe object and returns a string of HTML.
 */
 function buildRecipeCard(recipe) {
+    const imageSrc = recipe.image || (Array.isArray(recipe.images) && recipe.images[0]) || "https://via.placeholder.com/640x360?text=No+Image";
+
     return `
     <div class="recipe-card">
 
         <!-- Recipe Image -->
-        <img src="${recipe.image}" alt="${recipe.name}">
+        <img src="${imageSrc}" alt="${recipe.name}">
 
         <div class="recipe-content">
 
@@ -104,14 +151,31 @@ function renderRecipeContainer(recipes) {
     if (!recipeContainer) return;
 
     // Display a message when there are no recipes to show
-    if (recipes.length === 0) {
-        recipeContainer.innerHTML = "<p> No Recipes Found!</p>";
-        return;
-    }
+    // if (recipes.length === 0) {
+    //     recipeContainer.innerHTML = "<p> No Recipes Found!</p>";
+    //     return;
+    // }
+
     // Convert every recipe into HTML and insert into page
     recipeContainer.innerHTML = recipes
     .map(buildRecipeCard)
     .join("");
+}
+
+// Check the rendering for Search Message
+function renderSearchMessage(query, recipes) {
+    if(!searchMessage) return;
+
+    if(!query) {
+        searchMessage.textContent = "";
+        return;
+    }
+
+    if(recipes.length === 0) {
+        searchMessage.textContent = `No matching recipes found for "${query}".`;
+    } else {
+        searchMessage.textContent = `Showing recipes for "${query}".`;
+    }
 }
 
 // Create a pagination button with optional active and disabled
@@ -182,6 +246,24 @@ function setupPaginationListeners(currentPage) {
     });
 }
 
+// Setup Event Listeners for Search
+function setupSearchListeners() {
+    if (!searchForm || !searchInput) return;
+
+    const debouncedSearch = debounce(() => {
+        performSearch(searchInput.value.trim());
+    }, 500);
+
+    // Search after user stops typing
+    searchInput.addEventListener("input", debouncedSearch);
+
+    // Search immediately when Enter is pressed
+    searchForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        performSearch(searchInput.value.trim());
+    });
+}
+
 /** Main function responsible for:
  * 1. Fetching recipes
  * 2. Rendering them on the page
@@ -192,10 +274,16 @@ async function loadRecipes() {
 
     try {
         const currentPage = isRecipesPage() ? getCurrentPage() : 1;
+        const query = isRecipesPage() ? getSearchQuery() : "";
         const limit = isRecipesPage() ? RECIPES_PER_PAGE : 3;
-        const { recipes, total } = await fetchRecipes(currentPage, limit);
+        const { recipes, total } = await fetchRecipes(currentPage, limit, query);
+
+        if (searchInput) {
+            searchInput.value = query;
+        }
 
         renderRecipeContainer(recipes);
+        renderSearchMessage(query, recipes);
 
         if (isRecipesPage() && paginationContainer) {
             renderPagination(total, currentPage);
@@ -207,5 +295,7 @@ async function loadRecipes() {
     }
 }
 
-// Start loading recipes as soon as this file runs
+// Set up search event listeners
+setupSearchListeners();
+// Load recipes
 loadRecipes();

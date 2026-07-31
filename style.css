@@ -133,9 +133,13 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 30px;
+    justify-content: center;
+    align-items: start;
 }
 
 .recipe-card {
+    width: 100%;
+    max-width: 420px;
     position: relative;
     background: #fff;
     border-radius: 24px;
@@ -198,7 +202,7 @@
 
 .section-header {
     text-align: center;
-    margin-bottom: 50px;
+    margin-bottom: 30px;
 }
 .section-header h2 {
     font-size: 40px;
@@ -208,6 +212,53 @@
 .section-header p {
     color: #666;
     font-size: 16px;
+}
+
+.search-bar {
+    max-width: 860px;
+    margin: 0 auto 40px;
+    text-align: center;
+}
+.search-form {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.search-form input {
+    width: 100%;
+    max-width: 520px;
+    padding: 14px 18px;
+    border: 1px solid #dbe5ff;
+    border-radius: 14px;
+    font-size: 16px;
+    color: #222;
+    outline: none;
+}
+.search-form input:focus {
+    border-color: #4567d8;
+    box-shadow: 0 0 0 4px rgba(69, 100, 216, 0.12);
+}
+
+.btn-search {
+    padding: 14px 24px;
+    border: none;
+    border-radius: 14px;
+    background: #4567d8;
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.btn-search:hover {
+    background: #234dbd;
+}
+.search-message {
+    margin-top: 14px;
+    color: #333;
+    font-size: 15px;
 }
 
 .btn-recipe {

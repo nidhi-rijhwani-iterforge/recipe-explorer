@@ -29,6 +29,15 @@
                 <h2>Popular Recipes</h2>
                 <p>Click any recipe to view complete instructions.</p>
             </header>
+            
+            <!-- Search Bar-->
+            <div class="search-bar">
+                <form id="searchForm" class="search-form">
+                    <input type="search" id="searchInput" name="q" placeholder="Search recipes by name..">
+                    <button type="submit" class="btn-search">Search</button>
+                </form>
+                <p id="searchMessage" class="search-message"></p>
+            </div>
 
             <div id="recipeContainer" class="recipe-grid"></div>
             <div id="pagination" class="pagination"></div>

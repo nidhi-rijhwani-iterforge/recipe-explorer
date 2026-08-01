@@ -7,6 +7,7 @@ const searchMessage = document.getElementById("searchMessage");
 const cuisineFilter = document.getElementById("cuisineFilter");
 const difficultyFilter = document.getElementById("difficultyFilter");
 const sortSelect = document.getElementById("sortSelect");
+const loadingIndicator = document.getElementById("loadingIndicator");
 
 const RECIPES_PER_PAGE = 10; // Number of recipes per page
 
@@ -116,6 +117,18 @@ function getRecipeUrl(limit, skip = 0, query = "") {
 
 function getSortOption() {
     return new URLSearchParams(window.location.search).get("sort") ?? "";
+}
+
+function showLoading() {
+    if (loadingIndicator) {
+        loadingIndicator.style.display = "block";
+    }
+}
+
+function hideLoading() {
+    if (loadingIndicator) {
+        loadingIndicator.style.display = "none";
+    }
 }
 
 function sortRecipes(recipes, sortBy) {
@@ -360,6 +373,7 @@ async function loadRecipes() {
     if (!recipeContainer) return;
 
     try {
+        showLoading();
         const currentPage = isRecipesPage() ? getCurrentPage() : 1;
         const query = isRecipesPage() ? getSearchQuery() : "";
 
@@ -417,6 +431,8 @@ async function loadRecipes() {
 
     } catch (error) {
         console.error("Failed to load recipes:", error);
+    } finally {
+        hideLoading();
     }
 }
 

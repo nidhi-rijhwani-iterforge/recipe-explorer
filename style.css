@@ -246,6 +246,14 @@
     border-color: #4567d8;
     box-shadow: 0 0 0 4px rgba(69, 100, 216, 0.12);
 }
+.loading-indicator {
+    display: none;
+    text-align: center;
+    margin-top: 24px auto;
+    color: #4567d8;
+    font-size: 18px;
+    font-weight: 700;
+}
 
 .btn-search {
     padding: 14px 24px;

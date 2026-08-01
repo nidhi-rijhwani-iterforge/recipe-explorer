@@ -4,6 +4,9 @@ const paginationContainer = document.getElementById("pagination");
 const searchForm = document.getElementById("searchForm");
 const searchInput = document.getElementById("searchInput");
 const searchMessage = document.getElementById("searchMessage");
+const cuisineFilter = document.getElementById("cuisineFilter");
+const difficultyFilter = document.getElementById("difficultyFilter");
+const sortSelect = document.getElementById("sortSelect");
 
 const RECIPES_PER_PAGE = 10; // Number of recipes per page
 
@@ -19,24 +22,53 @@ function debounce(callback, delay) {
     };
 }
 
+function getCuisineFilter() {
+    return new URLSearchParams(window.location.search).get("cuisine") ?? "";
+}
 
-function performSearch(query) {
-    const searchParams = new URLSearchParams(window.location.search);
-    const currentQuery = searchParams.get("q")?.trim() ?? "";
+function getDifficultyFilter() {
+    return new URLSearchParams(window.location.search).get("difficulty") ?? "";
+}
 
-    // If the query hasn't changed, do nothing
-    if (currentQuery === query) {
-        return;
-    }
+function performSearch(query, clearFilters = false) {
+    const params = new URLSearchParams(window.location.search);
+
     if (query) {
-        searchParams.set("q", query);
+        params.set("q", query);
     } else {
-        searchParams.delete("q");
+        params.delete("q");
     }
-    // Only reset to page 1 because the query changed
-    searchParams.set("page", "1");
 
-    window.location.search = searchParams.toString();
+    if (clearFilters) {
+        params.delete("cuisine");
+        params.delete("difficulty");
+        params.delete("sort");
+        if (cuisineFilter) cuisineFilter.value = "";
+        if (difficultyFilter) difficultyFilter.value = "";
+        if (sortSelect) sortSelect.value = "";
+    } else {
+        if (cuisineFilter?.value) {
+            params.set("cuisine", cuisineFilter.value);
+        } else {
+            params.delete("cuisine");
+        }
+
+        if (difficultyFilter?.value) {
+            params.set("difficulty", difficultyFilter.value);
+        } else {
+            params.delete("difficulty");
+        }
+
+        if (sortSelect?.value) {
+            params.set("sort", sortSelect.value);
+        } else {
+            params.delete("sort");
+        }
+    }
+
+    params.set("page", "1");
+
+    window.location.search = params.toString();
 }
 
 /** 
@@ -80,6 +112,28 @@ function getRecipeUrl(limit, skip = 0, query = "") {
         url.searchParams.set("q", query);
     }
     return url.toString();
+}
+
+function getSortOption() {
+    return new URLSearchParams(window.location.search).get("sort") ?? "";
+}
+
+function sortRecipes(recipes, sortBy) {
+    if (!sortBy) return recipes;
+
+    return [...recipes].sort((a, b) => {
+        if (sortBy === "name-asc") {
+            return a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+        }
+        if (sortBy === "rating-desc") {
+            return (b.rating || 0) - (a.rating || 0);
+        }
+
+        if (sortBy === "time-asc") {
+            return (a.cookTimeMinutes || 0) - (b.cookTimeMinutes || 0);
+        }
+        return 0;
+    });
 }
 
 /** Fetch recipe data from the API and Returns an array of recipes. */
@@ -246,6 +300,22 @@ function setupPaginationListeners(currentPage) {
     });
 }
 
+async function populateFilters() {
+    const { recipes:allRecipes } = await fetchRecipes(1, 100);
+    const cuisines = [...new Set(allRecipes.map(r => r.cuisine))].filter(Boolean).sort();
+
+    cuisineFilter.innerHTML =
+        `<option value="">All Cuisines</option>` +
+        cuisines
+            .map(c => `<option value="${c}">${c}</option>`)
+            .join("");
+
+    cuisineFilter.value = getCuisineFilter();
+    difficultyFilter.value = getDifficultyFilter();
+    sortSelect.value = getSortOption();
+}
+
+
 // Setup Event Listeners for Search
 function setupSearchListeners() {
     if (!searchForm || !searchInput) return;
@@ -260,8 +330,26 @@ function setupSearchListeners() {
     // Search immediately when Enter is pressed
     searchForm.addEventListener("submit", (event) => {
         event.preventDefault();
-        performSearch(searchInput.value.trim());
+        performSearch(searchInput.value.trim(), true);
     });
+
+    if (cuisineFilter) {
+        cuisineFilter.addEventListener("change", () => {
+            performSearch(searchInput.value.trim());
+        });
+    }
+
+    if (difficultyFilter) {
+        difficultyFilter.addEventListener("change", () => {
+            performSearch(searchInput.value.trim());
+        });
+    }
+
+    if (sortSelect) {
+        sortSelect.addEventListener("change", () => {
+            performSearch(searchInput.value.trim());
+        });
+    }
 }
 
 /** Main function responsible for:
@@ -269,33 +357,75 @@ function setupSearchListeners() {
  * 2. Rendering them on the page
 */
 async function loadRecipes() {
-    // Stop execution if container isn't available
     if (!recipeContainer) return;
 
     try {
         const currentPage = isRecipesPage() ? getCurrentPage() : 1;
         const query = isRecipesPage() ? getSearchQuery() : "";
-        const limit = isRecipesPage() ? RECIPES_PER_PAGE : 3;
-        const { recipes, total } = await fetchRecipes(currentPage, limit, query);
+
+        const fetchLimit = isRecipesPage() ? 100 : 3;
+        const { recipes: allRecipes } = await fetchRecipes(1, fetchLimit, query);
+
+        let filteredRecipes = allRecipes;
+
+        const cuisine = getCuisineFilter();
+        const difficulty = getDifficultyFilter();
+
+        // Apply filters on complete data
+        if (cuisine) {
+            filteredRecipes = filteredRecipes.filter(
+                recipe => recipe.cuisine === cuisine
+            );
+        }
+
+        if (difficulty) {
+            filteredRecipes = filteredRecipes.filter(
+                recipe => recipe.difficulty === difficulty
+            );
+        }
+
+        const sortOption = getSortOption();
+        filteredRecipes = sortRecipes(filteredRecipes, sortOption);
+
+        // Total after filtering
+        const total = filteredRecipes.length;
+
+        // Pagination slicing
+        const startIndex = (currentPage - 1) * RECIPES_PER_PAGE;
+        const endIndex = startIndex + RECIPES_PER_PAGE;
+
+        const recipesForCurrentPage = filteredRecipes.slice(
+            startIndex,
+            endIndex
+        );
 
         if (searchInput) {
             searchInput.value = query;
         }
 
-        renderRecipeContainer(recipes);
-        renderSearchMessage(query, recipes);
+        renderRecipeContainer(recipesForCurrentPage);
+
+        renderSearchMessage(
+            query,
+            filteredRecipes
+        );
 
         if (isRecipesPage() && paginationContainer) {
             renderPagination(total, currentPage);
             setupPaginationListeners(currentPage);
         }
+
     } catch (error) {
-    // Show error in console if API request fails
-    console.error("Failed to load recipes:", error);
+        console.error("Failed to load recipes:", error);
     }
 }
 
-// Set up search event listeners
-setupSearchListeners();
-// Load recipes
-loadRecipes();
+(async () => {
+    if (isRecipesPage()) {
+        await populateFilters();
+        setupSearchListeners();
+        await loadRecipes();
+    } else {
+        await loadRecipes();
+    }
+})();

@@ -220,23 +220,29 @@
     text-align: center;
 }
 .search-form {
-    display: flex;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr repeat(4, 1fr) auto;
     align-items: center;
     gap: 12px;
-    flex-wrap: wrap;
 }
-.search-form input {
+.search-form input,
+.search-form select {
     width: 100%;
-    max-width: 520px;
+    max-width: 220px;
     padding: 14px 18px;
     border: 1px solid #dbe5ff;
     border-radius: 14px;
     font-size: 16px;
     color: #222;
     outline: none;
+    background: #fff;
+    appearance: none;
 }
-.search-form input:focus {
+.search-form input {
+    max-width: 520px;
+}
+.search-form input:focus,
+.search-form select:focus {
     border-color: #4567d8;
     box-shadow: 0 0 0 4px rgba(69, 100, 216, 0.12);
 }

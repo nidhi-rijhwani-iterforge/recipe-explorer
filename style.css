@@ -254,6 +254,25 @@
     font-size: 18px;
     font-weight: 700;
 }
+.status-message {
+    display: none;
+    text-align: center;
+    margin-top: 18px auto;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-size: 15px;
+    max-width: 600px;
+}
+.status-message.error {
+    background:#fdecea;
+    color: #b22222;
+    border: 1px solid #f5c6cb;
+}
+.status-message.info {
+    background:#e6ffed;
+    color: #4567d8;
+    border: 1px solid #cdd9e5;
+}
 
 .btn-search {
     padding: 14px 24px;

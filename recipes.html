@@ -53,11 +53,12 @@
                         <option value="time-asc">Cooking Time</option>
                     </select>
 
-                    <button type="submit" class="btn-search">Search</button>
+                    <button type="button" id="clearButton" class="btn-search">Clear</button>
                 </form>
                 <p id="searchMessage" class="search-message"></p>
             </div>
 
+            <div id="statusMessage" class="status-message"></div>
             <div id="loadingIndicator" class="loading-indicator" role="status">Loading recipes...</div>
 
             <div id="recipeContainer" class="recipe-grid"></div>

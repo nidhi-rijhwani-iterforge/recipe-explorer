@@ -34,6 +34,25 @@
             <div class="search-bar">
                 <form id="searchForm" class="search-form">
                     <input type="search" id="searchInput" name="q" placeholder="Search recipes by name..">
+                    
+                    <select id="cuisineFilter">
+                        <option value="">All Cuisines</option>
+                    </select>
+
+                    <select id="difficultyFilter">
+                        <option value="">All Difficulties</option>
+                        <option value="Easy">Easy</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Hard">Hard</option>
+                    </select>
+
+                    <select id="sortSelect">
+                        <option value="">Sort by</option>
+                        <option value="name">Recipe Name(A-Z)</option>
+                        <option value="difficulty">Rating</option>
+                        <option value="time-asc">Cooking Time</option>
+                    </select>
+
                     <button type="submit" class="btn-search">Search</button>
                 </form>
                 <p id="searchMessage" class="search-message"></p>

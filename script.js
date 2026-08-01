@@ -422,7 +422,7 @@ async function loadRecipes() {
 
         let filteredRecipes = [];
         if (!isRecipesPage()) {
-            const { recipes } = await fetchRecipes(currentPage, RECIPES_PER_PAGE, query);
+            const { recipes } = await fetchRecipes(1,3, "");
             filteredRecipes = recipes;
         } else {
             const allRecipes = await getAllRecipes();

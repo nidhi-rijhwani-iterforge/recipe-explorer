@@ -8,7 +8,10 @@ const cuisineFilter = document.getElementById("cuisineFilter");
 const difficultyFilter = document.getElementById("difficultyFilter");
 const sortSelect = document.getElementById("sortSelect");
 const loadingIndicator = document.getElementById("loadingIndicator");
+const statusMessage = document.getElementById("statusMessage");
+const clearButton = document.getElementById("clearButton");
 
+let allRecipesCache = null;
 const RECIPES_PER_PAGE = 10; // Number of recipes per page
 
 // Debounce : It prevents a function from running too frequently (e.g., typing, scrolling). 
@@ -104,6 +107,34 @@ function getSearchQuery() {
     return new URLSearchParams(window.location.search).get("q")?.trim() ?? ""; 
 }
 
+function showStatusMessage(message, type = "info") {
+    if (!statusMessage) return;
+    statusMessage.textContent = message;
+    statusMessage.className = `status-message ${type}`;
+    statusMessage.style.display = "block";
+}
+
+function clearStatusMessage() {
+    if (!statusMessage) return;
+    statusMessage.textContent = "";
+    statusMessage.className = "status-message";
+    statusMessage.style.display = "none";
+}   
+
+// Get al recipes from the API and store them in cache (avoid multiple API calls)
+async function getAllRecipes() {
+    // If recipes are already cached, return them instead of making another API call
+    if (allRecipesCache) {
+        return allRecipesCache;
+    }       
+
+    // Fetch recipes from page 1 with up to 100 recipes
+    const { recipes } = await fetchRecipes(1, 100);
+    // Store the fetched recipes in cache for future use and return them
+    allRecipesCache = recipes;
+    return recipes;
+}
+
 function getRecipeUrl(limit, skip = 0, query = "") {
     const baseUrl = query ? "https://dummyjson.com/recipes/search" : "https://dummyjson.com/recipes";
     const url = new URL(baseUrl);
@@ -155,6 +186,10 @@ async function fetchRecipes(page, limit, query = "") {
     const skip = Math.max(0, (page - 1) * limit);
     // Send request to API
     const response = await fetch(getRecipeUrl(limit, skip, query));
+    if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+    }
+
     // Convert response into JavaScript object
     const data = await response.json();
 
@@ -314,7 +349,7 @@ function setupPaginationListeners(currentPage) {
 }
 
 async function populateFilters() {
-    const { recipes:allRecipes } = await fetchRecipes(1, 100);
+    const allRecipes = await getAllRecipes();
     const cuisines = [...new Set(allRecipes.map(r => r.cuisine))].filter(Boolean).sort();
 
     cuisineFilter.innerHTML =
@@ -346,6 +381,13 @@ function setupSearchListeners() {
         performSearch(searchInput.value.trim(), true);
     });
 
+    if (clearButton) {
+        clearButton.addEventListener("click", () => {
+            searchInput.value = "";
+            performSearch("", true);
+        });
+    }
+
     if (cuisineFilter) {
         cuisineFilter.addEventListener("change", () => {
             performSearch(searchInput.value.trim());
@@ -373,14 +415,25 @@ async function loadRecipes() {
     if (!recipeContainer) return;
 
     try {
+        clearStatusMessage();
         showLoading();
         const currentPage = isRecipesPage() ? getCurrentPage() : 1;
         const query = isRecipesPage() ? getSearchQuery() : "";
 
-        const fetchLimit = isRecipesPage() ? 100 : 3;
-        const { recipes: allRecipes } = await fetchRecipes(1, fetchLimit, query);
-
-        let filteredRecipes = allRecipes;
+        let filteredRecipes = [];
+        if (!isRecipesPage()) {
+            const { recipes } = await fetchRecipes(currentPage, RECIPES_PER_PAGE, query);
+            filteredRecipes = recipes;
+        } else {
+            const allRecipes = await getAllRecipes();
+            filteredRecipes = allRecipes;
+            if (query) {
+                const normalizedQuery = query.toLowerCase();
+                filteredRecipes = filteredRecipes.filter(recipe =>
+                    recipe.name.toLowerCase().includes(normalizedQuery)
+                );
+            }
+        }
 
         const cuisine = getCuisineFilter();
         const difficulty = getDifficultyFilter();
@@ -431,6 +484,14 @@ async function loadRecipes() {
 
     } catch (error) {
         console.error("Failed to load recipes:", error);
+        renderRecipeContainer([]);
+        if(searchMessage) {
+            searchMessage.textContent = "";
+        }
+        showStatusMessage("Unable to load recipes. Please try again later.", "error");
+        if (paginationContainer) {
+            paginationContainer.innerHTML = "";
+        }
     } finally {
         hideLoading();
     }
@@ -438,9 +499,19 @@ async function loadRecipes() {
 
 (async () => {
     if (isRecipesPage()) {
-        await populateFilters();
-        setupSearchListeners();
-        await loadRecipes();
+        try {
+            await populateFilters();
+            setupSearchListeners();
+            await loadRecipes();
+        } catch (error) {
+            console.error("Failed to initialize recipes page:", error);
+            hideLoading();
+            renderRecipeContainer([]);
+            if(paginationContainer) {
+                paginationContainer.innerHTML = "";
+            }
+            showStatusMessage("Unable to load recipes page. Please try again later.", "error");
+        }
     } else {
         await loadRecipes();
     }

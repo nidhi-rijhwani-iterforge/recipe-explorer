@@ -1,5 +1,7 @@
 // Get the HTML elements where recipe cards, search and pagination controls will be displayed
 const recipeContainer = document.getElementById("recipeContainer");
+const favoriteContainer = document.getElementById("favoriteContainer");
+const recipeDetailContent = document.getElementById("recipeDetailContent");
 const paginationContainer = document.getElementById("pagination");
 const searchForm = document.getElementById("searchForm");
 const searchInput = document.getElementById("searchInput");
@@ -13,6 +15,49 @@ const clearButton = document.getElementById("clearButton");
 
 let allRecipesCache = null;
 const RECIPES_PER_PAGE = 10; // Number of recipes per page
+const FAVORITES_STORAGE_KEY = "favoriteRecipes";
+
+function isSingleRecipePage() {
+    return window.location.pathname.endsWith("single-recipe.html");
+}
+
+function isFavoritesPage() {
+    return window.location.pathname.endsWith("favorites.html");
+}
+
+function getFavorites() {
+    try {
+        const favorites = JSON.parse(localStorage.getItem(FAVORITES_STORAGE_KEY) || "[]");
+        return Array.isArray(favorites) ? favorites : [];
+    } catch (error) {
+        console.error("Could not read favorites:", error);
+        return [];
+    }
+}
+
+function saveFavorites(favorites) {
+    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(favorites));
+}
+
+function toggleFavorite(recipe) {
+    const favorites = getFavorites();
+    const exists = favorites.some((item) => item.id === recipe.id);
+
+    if (exists) {
+        saveFavorites(favorites.filter((item) => item.id !== recipe.id));
+    } else {
+        favorites.push(recipe);
+        saveFavorites(favorites);
+    }
+}
+
+function isFavorite(recipeId) {
+    return getFavorites().some((item) => item.id === recipeId);
+}
+
+function getRecipeById(recipeId) {
+    return allRecipesCache?.find((recipe) => String(recipe.id) === String(recipeId)) || null;
+}
 
 // Debounce : It prevents a function from running too frequently (e.g., typing, scrolling). 
 // The function executes only after a delay from the last event. 
@@ -206,6 +251,7 @@ async function fetchRecipes(page, limit, query = "") {
 */
 function buildRecipeCard(recipe) {
     const imageSrc = recipe.image || (Array.isArray(recipe.images) && recipe.images[0]) || "https://via.placeholder.com/640x360?text=No+Image";
+    const favoriteActiveClass = isFavorite(recipe.id) ? " active" : "";
 
     return `
     <div class="recipe-card">
@@ -220,27 +266,21 @@ function buildRecipeCard(recipe) {
 
         <!-- Recipe Details -->
         <div class="recipe-info">
-
-            <!-- Cuisine -->
             <span class="info cuisine"> 🍽 ${recipe.cuisine} </span>
-
-            <!-- Difficulty -->
             <span class="info difficulty">🔥 ${recipe.difficulty} </span>
-
-            <!-- Rating -->
             <span class="info rating"> ⭐ ${recipe.rating} </span>
-
-            <!-- Cooking Time -->
             <span class="info time"> ⏱ ${recipe.cookTimeMinutes} mins </span>
-
-            <!-- Meal Type -->
             <span class="info meal"> 🥗 ${recipe.mealType} </span>
         </div>
 
-        <!-- Link to individual recipe page -->
-        <a href="single-recipe.html?id=${recipe.id}" class="view-btn">
-            View Recipe
-        </a>
+        <div class="card-actions">
+            <a href="single-recipe.html?id=${recipe.id}" class="view-btn">
+                View Recipe
+            </a>
+            <button type="button" class="favorite-btn${favoriteActiveClass}" data-recipe-id="${recipe.id}" data-recipe="${encodeURIComponent(JSON.stringify(recipe))}">
+                ${isFavorite(recipe.id) ? "★ Saved" : "☆ Save"}
+            </button>
+        </div>
 
         </div>
     </div>
@@ -249,19 +289,74 @@ function buildRecipeCard(recipe) {
 
 /** Display all recipe cards inside the container. */
 function renderRecipeContainer(recipes) {
-    // Stop if container doesn't exist
     if (!recipeContainer) return;
 
-    // Display a message when there are no recipes to show
-    // if (recipes.length === 0) {
-    //     recipeContainer.innerHTML = "<p> No Recipes Found!</p>";
-    //     return;
-    // }
+    recipeContainer.innerHTML = recipes.map(buildRecipeCard).join("");
+}
 
-    // Convert every recipe into HTML and insert into page
-    recipeContainer.innerHTML = recipes
-    .map(buildRecipeCard)
-    .join("");
+function renderFavorites() {
+    if (!favoriteContainer) return;
+
+    const favorites = getFavorites();
+
+    if (favorites.length === 0) {
+        favoriteContainer.innerHTML = `
+            <div class="empty-state">
+                <h3>No favorite recipes yet.</h3>
+                <p>Save recipes from the recipes page to see them here.</p>
+                <a href="recipes.html">Browse recipes</a>
+            </div>
+        `;
+        return;
+    }
+
+    favoriteContainer.innerHTML = favorites.map((recipe) => buildRecipeCard(recipe)).join("");
+}
+
+function renderRecipeDetail(recipe) {
+    if (!recipeDetailContent) return;
+
+    if (!recipe) {
+        recipeDetailContent.innerHTML = `
+            <div class="empty-state">
+                <h3>Recipe not found.</h3>
+                <p>The requested recipe could not be loaded.</p>
+                <a href="recipes.html">Back to recipes</a>
+            </div>
+        `;
+        return;
+    }
+
+    const imageSrc = recipe.image || (Array.isArray(recipe.images) && recipe.images[0]) || "https://via.placeholder.com/640x360?text=No+Image";
+    const isSaved = isFavorite(recipe.id);
+
+    recipeDetailContent.innerHTML = `
+        <div class="recipe-detail-card">
+            <img src="${imageSrc}" alt="${recipe.name}">
+            <div class="recipe-detail-content">
+                <h1>${recipe.name}</h1>
+                <div class="recipe-meta">
+                    <span>🍽 ${recipe.cuisine}</span>
+                    <span>🔥 ${recipe.difficulty}</span>
+                    <span>⭐ ${recipe.rating}</span>
+                    <span>⏱ ${recipe.cookTimeMinutes} mins</span>
+                    <span>🥗 ${recipe.mealType}</span>
+                </div>
+                <p class="recipe-description">${recipe.description || "A delicious recipe waiting to be tried."}</p>
+                <button type="button" class="favorite-btn ${isSaved ? "active" : ""}" data-recipe-id="${recipe.id}" data-recipe="${encodeURIComponent(JSON.stringify(recipe))}">
+                    ${isSaved ? "★ Saved to Favorites" : "☆ Add to Favorites"}
+                </button>
+                <h2>Ingredients</h2>
+                <ul>
+                    ${(recipe.ingredients || []).map((ingredient) => `<li>${ingredient}</li>`).join("")}
+                </ul>
+                <h2>Instructions</h2>
+                <ul>
+                    ${(recipe.instructions || []).map((step) => `<li>${step}</li>`).join("")}
+                </ul>
+            </div>
+        </div>
+    `;
 }
 
 // Check the rendering for Search Message
@@ -424,6 +519,7 @@ async function loadRecipes() {
         if (!isRecipesPage()) {
             const { recipes } = await fetchRecipes(1,3, "");
             filteredRecipes = recipes;
+            allRecipesCache = recipes;
         } else {
             const allRecipes = await getAllRecipes();
             filteredRecipes = allRecipes;
@@ -438,7 +534,6 @@ async function loadRecipes() {
         const cuisine = getCuisineFilter();
         const difficulty = getDifficultyFilter();
 
-        // Apply filters on complete data
         if (cuisine) {
             filteredRecipes = filteredRecipes.filter(
                 recipe => recipe.cuisine === cuisine
@@ -454,28 +549,18 @@ async function loadRecipes() {
         const sortOption = getSortOption();
         filteredRecipes = sortRecipes(filteredRecipes, sortOption);
 
-        // Total after filtering
         const total = filteredRecipes.length;
-
-        // Pagination slicing
         const startIndex = (currentPage - 1) * RECIPES_PER_PAGE;
         const endIndex = startIndex + RECIPES_PER_PAGE;
 
-        const recipesForCurrentPage = filteredRecipes.slice(
-            startIndex,
-            endIndex
-        );
+        const recipesForCurrentPage = filteredRecipes.slice(startIndex, endIndex);
 
         if (searchInput) {
             searchInput.value = query;
         }
 
         renderRecipeContainer(recipesForCurrentPage);
-
-        renderSearchMessage(
-            query,
-            filteredRecipes
-        );
+        renderSearchMessage(query, filteredRecipes);
 
         if (isRecipesPage() && paginationContainer) {
             renderPagination(total, currentPage);
@@ -497,6 +582,67 @@ async function loadRecipes() {
     }
 }
 
+async function loadSingleRecipe() {
+    if (!recipeDetailContent) return;
+
+    try {
+        const params = new URLSearchParams(window.location.search);
+        const recipeId = params.get("id");
+        if (!recipeId) {
+            renderRecipeDetail(null);
+            return;
+        }
+
+        let recipe = getRecipeById(recipeId);
+        if (!recipe) {
+            const { recipes } = await fetchRecipes(1, 100, "");
+            allRecipesCache = recipes;
+            recipe = getRecipeById(recipeId);
+        }
+
+        renderRecipeDetail(recipe);
+    } catch (error) {
+        console.error("Failed to load recipe detail:", error);
+        renderRecipeDetail(null);
+    }
+}
+
+function attachFavoriteListeners() {
+    document.addEventListener("click", (event) => {
+        const button = event.target.closest(".favorite-btn");
+        if (!button) return;
+
+        const recipeId = button.dataset.recipeId;
+        let recipe = getRecipeById(recipeId);
+
+        if (!recipe) {
+            try {
+                recipe = JSON.parse(decodeURIComponent(button.dataset.recipe || ""));
+            } catch (error) {
+                console.error("Could not parse favorite recipe data:", error);
+                return;
+            }
+        }
+
+        if (!recipe) return;
+
+        toggleFavorite(recipe);
+
+        if (isFavoritesPage()) {
+            renderFavorites();
+        } else if (isSingleRecipePage()) {
+            renderRecipeDetail(recipe);
+        } else if (recipeContainer) {
+            loadRecipes();
+        }
+    });
+}
+
+function getAllRecipesCacheRecipes() {
+    if (!allRecipesCache) return [];
+    return allRecipesCache;
+}
+
 (async () => {
     if (isRecipesPage()) {
         try {
@@ -512,7 +658,13 @@ async function loadRecipes() {
             }
             showStatusMessage("Unable to load recipes page. Please try again later.", "error");
         }
+    } else if (isSingleRecipePage()) {
+        await loadSingleRecipe();
+    } else if (isFavoritesPage()) {
+        renderFavorites();
     } else {
         await loadRecipes();
     }
+
+    attachFavoriteListeners();
 })();

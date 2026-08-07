@@ -226,3 +226,12 @@
     }
 
 }
+
+@media (max-width: 768px) {
+    .recipe-detail-card {
+        grid-template-columns: 1fr;
+    }
+    .card-actions {
+        flex-direction: column;
+    }
+}

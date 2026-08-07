@@ -377,3 +377,116 @@
     opacity: 0.55;
     cursor: not-allowed;
 }
+
+/* === Favorites & Detail Pages === */
+.page-shell {
+    padding: 60px 0 90px;
+    background: linear-gradient(to bottom, #f8fbff, #eef5ff);
+}
+.back-link {
+    display: inline-block;
+    margin-bottom: 24px;
+    color: #4567d8;
+    font-weight: 600;
+    text-decoration: none;
+}
+.back-link:hover {
+    text-decoration: underline;
+}
+.card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: auto;
+}
+.favorite-btn,
+.view-btn {
+    flex: 1;
+    text-align: center;
+    display: inline-block;
+    padding: 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: .3s;
+    border: none;
+    cursor: pointer;
+}
+.favorite-btn {
+    background: #fef3c7;
+    color: #92400e;
+}
+.favorite-btn.active {
+    background: #f59e0b;
+    color: #fff;
+}
+.favorite-btn:hover {
+    background: #fde68a;
+}
+.recipe-detail-card {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 30px;
+    background: #fff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px rgba(70, 100, 180, 0.12);
+}
+.recipe-detail-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+.recipe-detail-content {
+    padding: 32px;
+}
+.recipe-detail-content h1 {
+    font-size: 32px;
+    margin-bottom: 16px;
+    color: #1f2937;
+}
+.recipe-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.recipe-meta span {
+    background: #eef5ff;
+    color: #4567d8;
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+}
+.recipe-description {
+    color: #555;
+    line-height: 1.7;
+    margin-bottom: 24px;
+}
+.recipe-detail-content h2 {
+    margin: 24px 0 12px;
+    color: #1f2937;
+    font-size: 20px;
+}
+.recipe-detail-content ul {
+    padding-left: 20px;
+    color: #444;
+    line-height: 1.8;
+}
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 16px 40px rgba(70, 100, 180, 0.08);
+}
+.empty-state a {
+    display: inline-block;
+    margin-top: 16px;
+    color: #4567d8;
+    font-weight: 600;
+    text-decoration: none;
+}
+.empty-state a:hover {
+    text-decoration: underline;
+}
